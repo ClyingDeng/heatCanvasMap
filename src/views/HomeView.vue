@@ -52,8 +52,8 @@ export default {
   mounted() {
     this.latlngs = []
     for (let i = 0; i < 300; i++) {
-      let randomLng = 116.404 + Math.random() * 0.5
-      let randomLat = 39.215 + Math.random() * 0.8
+      let randomLng = 116.1541 + Math.random() * 0.5
+      let randomLat = 39.8125 + Math.random() * 0.4
       this.latlngs.push({
         //地理坐标
         lng: randomLng,
@@ -63,7 +63,7 @@ export default {
     }
     this.map = new BMapGL.Map('container')
     let point = new BMapGL.Point(116.404, 39.915)
-    this.map.centerAndZoom(point, 8)
+    this.map.centerAndZoom(point, 10)
     this.map.enableScrollWheelZoom(true)
     this.heatmapCanvas = new window.HeatMapCanvas({
       container: document.getElementById('container'),
@@ -92,10 +92,10 @@ export default {
       // 设置热力图数据
       this.heatmapCanvas.setData({
         min: 0,
-        max: 170,
+        max: 100,
         data: this.points
       })
-      this.canvas = this.heatmapCanvas._render.canvas
+      this.canvas = this.heatmapCanvas._render.shadowCanvascanvas
       const { sw, ne } = this.map.getBounds()
       var bounds = new BMapGL.Bounds(
         new BMapGL.Point(sw.lng, sw.lat),
