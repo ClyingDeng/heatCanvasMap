@@ -1,4 +1,4 @@
-// 带聚合功能的热力图
+// 简单热力图
 const defaultConfig = {
   defaultContainer: null,
   defaultRadius: 40,
@@ -150,26 +150,11 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
     _drawAlpha(conf) {
       let min = (this._min = conf.min)
       let max = (this._max = conf.max)
-      let datas = conf.data || []
-      let width = this._width
-      let height = this._height
-      let gridSize = 20
-      let xNum = Math.floor(width / gridSize)
-      let yNum = Math.floor(height / gridSize)
-      let gridsLen = xNum * yNum
-      console.log(xNum, yNum, datas.length)
-      // let data = gridsLen > datas.length ? datas : grids
-      if (gridsLen > datas.length) {
-        data = datas
-      } else {
-        let mapbox = this._heatmapPoly(datas)
-        let grids = this._getPointXY(mapbox) // 转换获取对应每个网格的中心位置
-        data = grids
-      }
+      let data = conf.data || []
       let dataLen = data.length
       let radius = this.config.defaultRadius
       let blur = 1 - this.config.defaultBlur // blur越小越模糊
-      // 把每个格子看成一个点去渲染
+
       while (dataLen--) {
         let tpl = null
         let point = data[dataLen]
@@ -186,79 +171,7 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
         this.shadowCtx.drawImage(tpl, rectX, rectY)
       }
     },
-    // 容器网格
-    _contentPoly(gridSize = 10) {
-      let mapBox = []
-      let width = this._width
-      let height = this._height
-      let xNum = Math.floor(width / gridSize)
-      let yNum = Math.floor(height / gridSize)
-      for (let i = 0; i < xNum; i++) {
-        let row = []
-        for (let j = 0; j < yNum; j++) {
-          row.push({
-            x1: j * gridSize,
-            y1: i * gridSize,
-            x2: (j + 1) * gridSize,
-            y2: (i + 1) * gridSize,
-            count: 0
-          })
-        }
-        mapBox.push(row)
-      }
-      return mapBox
-    },
-    // 每个点落到对应的网格中
-    async _heatmapPoly(datas, gridSize = 10) {
-      let mapBox = await this._contentPoly(gridSize)
-      let max = this._max
-      let len = datas.length
-      while (len--) {
-        let point = datas[len]
-        let x = point[this.config.defaultXField]
-        let y = point[this.config.defaultYField]
-        let count = point.count
-        // 找到该点所属的网格
-        let gridX = Math.floor(x / gridSize)
-        let gridY = Math.floor(y / gridSize)
-        // 将点的 count 值加到对应的网格中
-        if (mapBox[gridX][gridY]) mapBox[gridX][gridY].count += count
-        // 如果该网格的 count 值超过了最大值 max，则将该网格的 count 置为 max
-        if (mapBox[gridX][gridY].count > max) {
-          mapBox[gridX][gridY].count = max
-        }
-        // let mbAlpha = (mapBox[gridX][gridY].count - min) / (max - min)
-        // let alpha = mbAlpha < 0.01 ? 0.01 : mbAlpha
-        // mapBox[gridX][gridY].alpha = alpha
-      }
-      return mapBox
-      // this._findGridInfo(point, interval)
-    },
-    _getPointXY(grid) {
-      let points = []
-      grid.forEach((row) => {
-        row.forEach((cell) => {
-          let x = (cell.x1 + cell.x2) / 2
-          let y = (cell.y1 + cell.y2) / 2
-          points.push({
-            [this.config.defaultXField]: x,
-            [this.config.defaultYField]: y,
-            count: cell.count
-          })
-        })
-      })
 
-      return points
-    },
-    // 判断点是否在网格中
-    _findGridInfo(point, interval = 5) {
-      let width = this._width
-      let height = this._height
-      let xNum = Math.floor(width / interval) + 1
-      let yNum = Math.floor(height / interval) + 1
-
-      console.log(point)
-    },
     // 生成一个256px的彩带 获取像素点集合
     _getColorPalette() {
       let gradientConfig = this.config.defaultGradient

@@ -1,5 +1,5 @@
 <template>
-  <!-- <div id="containerDIV"></div> -->
+  <!-- 简单热力图 -->
   <div id="container"></div>
 </template>
 <script lang="js" name="Home">
@@ -95,7 +95,7 @@ export default {
         max: 100,
         data: this.points
       })
-      this.canvas = this.heatmapCanvas._render.canvas
+      this.canvas = this.heatmapCanvas._render.shadowCanvas
       const { sw, ne } = this.map.getBounds()
       var bounds = new BMapGL.Bounds(
         new BMapGL.Point(sw.lng, sw.lat),

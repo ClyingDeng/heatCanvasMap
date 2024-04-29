@@ -151,11 +151,22 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       let min = (this._min = conf.min)
       let max = (this._max = conf.max)
       let datas = conf.data || []
-
-      let mapbox = this._heatmapPoly(datas)
-      let data = this._getPointXY(mapbox) // 转换获取对应每个网格的中心位置
+      let width = this._width
+      let height = this._height
+      let gridSize = 10
+      let xNum = Math.floor(width / gridSize)
+      let yNum = Math.floor(height / gridSize)
+      let gridsLen = xNum * yNum
+      console.log(xNum, yNum, datas.length)
+      // let data = gridsLen > datas.length ? datas : grids
+      if (gridsLen > datas.length) {
+        data = datas
+      } else {
+        let mapbox = this._heatmapPoly(datas, gridSize)
+        let grids = this._getPointXY(mapbox) // 转换获取对应每个网格的中心位置
+        data = grids
+      }
       let dataLen = data.length
-      console.log(data)
       let radius = this.config.defaultRadius
       let blur = 1 - this.config.defaultBlur // blur越小越模糊
       // 把每个格子看成一个点去渲染
@@ -176,13 +187,12 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       }
     },
     // 容器网格
-    _contentPoly(gridSize = 20) {
+    _contentPoly(gridSize = 10) {
       let mapBox = []
       let width = this._width
       let height = this._height
-      let xNum = Math.floor(width / gridSize)
-      let yNum = Math.floor(height / gridSize)
-      console.log(xNum, yNum)
+      let xNum = Math.floor(width / gridSize) + 1
+      let yNum = Math.floor(height / gridSize) + 1
       for (let i = 0; i < xNum; i++) {
         let row = []
         for (let j = 0; j < yNum; j++) {
@@ -199,7 +209,7 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       return mapBox
     },
     // 每个点落到对应的网格中
-    _heatmapPoly(datas, gridSize = 20) {
+    _heatmapPoly(datas, gridSize = 10) {
       let mapBox = this._contentPoly(gridSize)
       let max = this._max
       let len = datas.length
@@ -212,14 +222,13 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
         let gridX = Math.floor(x / gridSize)
         let gridY = Math.floor(y / gridSize)
         // 将点的 count 值加到对应的网格中
-        mapBox[gridY][gridX].count += count
+        if (count) mapBox[gridX][gridY].count += count
         // 如果该网格的 count 值超过了最大值 max，则将该网格的 count 置为 max
-        if (mapBox[gridY][gridX].count > max) {
-          mapBox[gridY][gridX].count = max
+        if (mapBox[gridX][gridY].count > max) {
+          mapBox[gridX][gridY].count = max
         }
       }
       return mapBox
-      // this._findGridInfo(point, interval)
     },
     _getPointXY(grid) {
       let points = []
