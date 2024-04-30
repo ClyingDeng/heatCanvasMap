@@ -157,7 +157,6 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       let xNum = Math.floor(width / gridSize)
       let yNum = Math.floor(height / gridSize)
       let gridsLen = xNum * yNum
-      console.log(xNum, yNum, datas.length)
       // let data = gridsLen > datas.length ? datas : grids
       if (gridsLen > datas.length) {
         data = datas

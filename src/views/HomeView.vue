@@ -11,36 +11,36 @@ export default {
       heatmapCanvas: null,
       mapBounds: null,
       latlngs: [
-        // {
-        //   lng: 116.46754429734781,
-        //   lat: 39.9610120606158,
-        //   count: 67.08430718281981
-        // },
-        // {
-        //   lng: 116.45388932327177,
-        //   lat: 39.93922650653802,
-        //   count: 87.27049672583702
-        // },
-        // {
-        //   lng: 116.51676961427235,
-        //   lat: 39.957355396010655,
-        //   count: 65.19401496400552
-        // },
-        // {
-        //   lng: 116.50268151440899,
-        //   lat: 40.00267237928021,
-        //   count: 49.24838394729958
-        // },
+        {
+          lng: 116.46754429734781,
+          lat: 39.9610120606158,
+          count: 67.08430718281981
+        },
+        {
+          lng: 116.45388932327177,
+          lat: 39.93922650653802,
+          count: 87.27049672583702
+        },
+        {
+          lng: 116.51676961427235,
+          lat: 39.957355396010655,
+          count: 65.19401496400552
+        },
+        {
+          lng: 116.50268151440899,
+          lat: 40.00267237928021,
+          count: 49.24838394729958
+        },
         {
           lng: 116.404,
           lat: 39.915,
           count: 80
+        },
+        {
+          lng: 115.4148329641738,
+          lat: 39.913690333,
+          count: 90
         }
-        // {
-        //   lng: 115.4148329641738,
-        //   lat: 39.913690333,
-        //   count: 90
-        // }
       ],
       map: null,
       offset: null,
@@ -51,17 +51,17 @@ export default {
     }
   },
   mounted() {
-    this.latlngs = []
-    for (let i = 0; i < 100; i++) {
-      let randomLng = 116.1541 + Math.random() * 0.5
-      let randomLat = 39.8125 + Math.random() * 0.4
-      this.latlngs.push({
-        //地理坐标
-        lng: randomLng,
-        lat: randomLat,
-        count: Math.random() * 100
-      })
-    }
+    // this.latlngs = []
+    // for (let i = 0; i < 100; i++) {
+    //   let randomLng = 116.1541 + Math.random() * 0.5
+    //   let randomLat = 39.8125 + Math.random() * 0.4
+    //   this.latlngs.push({
+    //     //地理坐标
+    //     lng: randomLng,
+    //     lat: randomLat,
+    //     count: Math.random() * 100
+    //   })
+    // }
     this.map = new BMapGL.Map('container')
     let point = new BMapGL.Point(116.404, 39.915)
     this.map.centerAndZoom(point, 10)
