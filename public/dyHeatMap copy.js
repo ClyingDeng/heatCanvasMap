@@ -80,7 +80,7 @@ let HeatMapCanvas = (() => {
 })()
 
 let canvasRender = (function Canvas2dRendererClosure(config) {
-  let _getPointTemplate = (radius, blur, pointVal, min, max) => {
+  let _getPointTemplate = (radius, blur) => {
     let tplCanvas = document.createElement('canvas')
     let tplCtx = tplCanvas.getContext('2d')
     tplCanvas.width = tplCanvas.height = radius * 2
@@ -90,9 +90,9 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
     let gradient = tplCtx.createRadialGradient(x, y, radius * blur, x, y, radius)
     gradient.addColorStop(0, 'rgba(0,0,0,1)')
     gradient.addColorStop(1, 'rgba(0,0,0,0)')
-    tplCtx.globalAlpha = (pointVal - min) / (max - min) // 给每个点设置灰度值
     tplCtx.fillStyle = gradient
     tplCtx.fillRect(0, 0, 2 * radius, 2 * radius)
+
     return tplCanvas
   }
   // 画canvas
@@ -160,11 +160,11 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
         let point = data[dataLen]
         let x = point[this.config.defaultXField]
         let y = point[this.config.defaultYField]
-        tpl = _getPointTemplate(radius, blur, point[this.config.defaultValueField], min, max) // 灰度点
+        tpl = _getPointTemplate(radius, blur) // 灰度点
         // 设置每个点的模糊度
-        // let value = Math.min(point[this.config.defaultValueField], max) // 超出最大取最大
-        // let tplAlpha = (value - min) / (max - min)
-        // this.shadowCtx.globalAlpha = tplAlpha < 0.01 ? 0.01 : tplAlpha
+        let value = Math.min(point[this.config.defaultValueField], max) // 超出最大取最大
+        let tplAlpha = (value - min) / (max - min)
+        this.shadowCtx.globalAlpha = tplAlpha < 0.01 ? 0.01 : tplAlpha
         // 画到shadowCanvas上
         let rectX = x - radius
         let rectY = y - radius
@@ -185,6 +185,7 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       }
       paletteCtx.fillStyle = gradient
       paletteCtx.fillRect(0, 0, 256, 1)
+
       return paletteCtx.getImageData(0, 0, 256, 1).data
     },
     _colorResize() {
@@ -198,7 +199,7 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       let palette = this._getColorPalette() // 彩带的像素集合
       let len = imgData.length
       for (var i = 3; i < len; i += 4) {
-        let alpha = imgData[i] // i=3 取第一个像素的透明度
+        let alpha = imgData[i] //取第一个像素的透明度
         let offset = alpha * 4
         if (!offset) {
           continue
@@ -225,6 +226,7 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
         imgData[i] = finalAlpha
       }
       img.data = imgData
+
       this.ctx.putImageData(img, 0, 0)
     },
     renderAll(data) {

@@ -5,7 +5,7 @@ import HelloWorld from './components/HelloWorld.vue'
 
 <template>
   <header>
-    <RouterLink to="/home">自己实现</RouterLink>|
+    <RouterLink to="/heat">简单热力图</RouterLink>| <RouterLink to="/grid">网格热力图</RouterLink>|
     <!-- <RouterLink to="/about">heatmapjs</RouterLink> -->
   </header>
 

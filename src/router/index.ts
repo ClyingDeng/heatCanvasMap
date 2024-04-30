@@ -7,12 +7,23 @@ const router = createRouter({
     {
       path: '/',
       name: 'Home',
+      redirect: '/heat',
       component: HomeView
     },
     {
       path: '/home',
       name: 'Home',
       component: HomeView
+    },
+    {
+      path: '/heat',
+      name: 'Heat',
+      component: () => import('../views/Heat.vue')
+    },
+    {
+      path: '/grid',
+      name: 'GridHeat',
+      component: () => import('../views/GridHeat.vue')
     },
     {
       path: '/about',
