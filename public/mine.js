@@ -80,7 +80,7 @@ let HeatMapCanvas = (() => {
 })()
 
 let canvasRender = (function Canvas2dRendererClosure(config) {
-  let _getPointTemplate = (radius, blur) => {
+  let _getPointTemplate = (radius, blur, pointVal, min, max, heatConf) => {
     let tplCanvas = document.createElement('canvas')
     let tplCtx = tplCanvas.getContext('2d')
     tplCanvas.width = tplCanvas.height = radius * 2
@@ -90,6 +90,7 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
     let gradient = tplCtx.createRadialGradient(x, y, radius * blur, x, y, radius)
     gradient.addColorStop(0, 'rgba(0,0,0,1)')
     gradient.addColorStop(1, 'rgba(0,0,0,0)')
+    tplCtx.globalAlpha = (pointVal - min) / (max - min) // 给每个点设置灰度值
     tplCtx.fillStyle = gradient
     tplCtx.fillRect(0, 0, 2 * radius, 2 * radius)
 
@@ -157,11 +158,11 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       let xNum = Math.floor(width / gridSize)
       let yNum = Math.floor(height / gridSize)
       let gridsLen = xNum * yNum
-      console.log(xNum, yNum, datas.length)
-      // let data = gridsLen > datas.length ? datas : grids
       if (gridsLen > datas.length) {
+        // 没有超出划分的网格数就不需要聚合，单个渲染更合适
         data = datas
       } else {
+        // 缩放可以再变化网格大小
         let mapbox = this._heatmapPoly(datas, gridSize)
         let grids = this._getPointXY(mapbox) // 转换获取对应每个网格的中心位置
         data = grids
@@ -169,13 +170,14 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       let dataLen = data.length
       let radius = this.config.defaultRadius
       let blur = 1 - this.config.defaultBlur // blur越小越模糊
+
       // 把每个格子看成一个点去渲染
       while (dataLen--) {
         let tpl = null
         let point = data[dataLen]
         let x = point[this.config.defaultXField]
         let y = point[this.config.defaultYField]
-        tpl = _getPointTemplate(radius, blur) // 灰度点
+        tpl = _getPointTemplate(radius, blur, point[this.config.defaultValueField], min, max) // 灰度点
         // 设置每个点的模糊度
         let value = Math.min(point[this.config.defaultValueField], max) // 超出最大取最大
         let tplAlpha = (value - min) / (max - min)
