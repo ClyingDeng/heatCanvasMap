@@ -18,7 +18,7 @@ const router = createRouter({
     {
       path: '/heat',
       name: 'Heat',
-      component: () => import('../views/Heat.vue')
+      component: () => import('../views/heat.vue')
     },
     {
       path: '/grid',

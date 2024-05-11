@@ -3,6 +3,8 @@
   <div id="container"></div>
 </template>
 <script lang="js" name="GridHeat">
+import { cloneDeep } from 'lodash'
+
 export default {
   name: 'GridHeat',
   components: {},
@@ -51,17 +53,17 @@ export default {
     }
   },
   mounted() {
-    // this.latlngs = []
-    // for (let i = 0; i < 100; i++) {
-    //   let randomLng = 116.1541 + Math.random() * 0.5
-    //   let randomLat = 39.8125 + Math.random() * 0.4
-    //   this.latlngs.push({
-    //     //地理坐标
-    //     lng: randomLng,
-    //     lat: randomLat,
-    //     count: Math.random() * 100
-    //   })
-    // }
+    this.latlngs = []
+    for (let i = 0; i < 10000; i++) {
+      let randomLng = 116.1541 + Math.random() * 0.5
+      let randomLat = 39.8125 + Math.random() * 0.4
+      this.latlngs.push({
+        //地理坐标
+        lng: randomLng,
+        lat: randomLat,
+        count: Math.random() * 100
+      })
+    }
     this.map = new BMapGL.Map('container')
     let point = new BMapGL.Point(116.404, 39.915)
     this.map.centerAndZoom(point, 10)
@@ -75,31 +77,32 @@ export default {
       // 数据点中 y 坐标的属性名称
       yField: 'lat',
       // 数据点中 y 坐标的属性名称
-      valueField: 'count'
+      valueField: 'count',
+      mapInstance: this.map
     })
-    this.offset = this.map.getCenter()
+
+    this.pointsBounds()
+    // 设置热力图数据
+    this.heatmapCanvas.setData({
+      min: 0,
+      max: 100,
+      data: this.points
+    })
     this.renderMap()
     // 监听地图缩放事件
     this.map.addEventListener('zoomend', () => {
-      this.$nextTick(() => {
-        this.renderMap()
-      })
+      this.heatmapCanvas.updateData()
+      this.renderMap()
     })
     // // 监听地图拖拽事件
     this.map.addEventListener('dragend', () => {
+      this.heatmapCanvas.updateData()
       this.renderMap()
     })
   },
   methods: {
     async renderMap() {
-      await this.pointsBounds() // 获取数据新位置
-
-      // 设置热力图数据https://abnormal-manage-h5.stg.ztosys.com
-      this.heatmapCanvas.setData({
-        min: 0,
-        max: 100,
-        data: this.points
-      })
+      this.map.clearOverlays()
       this.canvas = this.heatmapCanvas._render.canvas
       const { sw, ne } = this.map.getBounds()
       var bounds = new BMapGL.Bounds(
@@ -120,24 +123,18 @@ export default {
       if (r.equals(this.mapBounds)) return
       this.mapBounds = r
       let n = this.latlngs.length
-      // 获取地图的偏移量
-      // let offset = this.map.getCenter()
-      // let offsetLng = this.offset.lng - offset.lng
-      // let offsetLat = this.offset.lat - offset.lat
-      // console.log('offset', offsetLng, offsetLat)
+
       while (n--) {
         let f = this.latlngs[n]
         if (!r.containsPoint(f)) {
           continue
         } // 超出可是范围的不画
-        // console.log(this.latlngs[n])
-        let point = this.map.pointToOverlayPixel({
+        // 需要渲染的点
+        mapData.push({
           lng: this.latlngs[n].lng,
           lat: this.latlngs[n].lat,
-          radius: this.radius
+          count: this.latlngs[n].count
         })
-        // 需要渲染的点
-        mapData.push({ lng: point.y, lat: point.x, count: this.latlngs[n].count })
       }
       this.points = mapData
     }

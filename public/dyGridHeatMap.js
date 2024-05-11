@@ -14,7 +14,8 @@ const defaultConfig = {
   defaultBlur: 0.85,
   defaultXField: 'x',
   defaultYField: 'y',
-  defaultValueField: 'value'
+  defaultValueField: 'value',
+  defaultMapInstance: null
 }
 // mergeOptions
 function mergeConfig(defaultConfig, config) {
@@ -62,15 +63,185 @@ let HeatMapCanvas = (() => {
     this._coordinator = new EventEmitter()
     this.container = config.container // 容器
     this.config = mergeConfig(defaultConfig, config) // 配置整合
-
+    this.grids = null // 网格
+    this.xMin = null
+    this.xMax = null
+    this.yMin = null
+    this.yMax = null
+    this.gridSize = 0.006
+    this.dataConfig = null
     this._render = new canvasRender(this.config)
     // 订阅renderAll
     this._coordinator.on('renderAll', this._render.renderAll, this._render) // 使用时可以获取到当前scope指向的具体的this
   }
+
   HeatMapCanvas.prototype = {
     setData(data) {
+      this.initGrid(data) // 初始化数据网格的四角
+      let mapbox = this._heatmapPoly(data.data)
+      // console.log(mapbox.length, mapbox[0].length)
+      this.grids = this._getPointXY(mapbox) // 转换获取对应每个网格的中心位置
+      this.dataConfig = data
+      // this.dataConfig.data = this.grids
       // 触发
-      this._coordinator.emit('renderAll', data)
+      this._coordinator.emit('renderAll', this.handleData(this.dataConfig))
+    },
+    updateData() {
+      // 局部触发
+      this._coordinator.emit('renderAll', this.handleData(this.dataConfig))
+    },
+    initGrid(conf) {
+      let datas = conf.data || []
+      if (!datas.length) return
+      let xMin = datas[0][this.config.defaultXField]
+      let xMax = datas[0][this.config.defaultXField]
+      let yMin = datas[0][this.config.defaultYField]
+      let yMax = datas[0][this.config.defaultYField]
+      datas.forEach((item, index) => {
+        let x = item[this.config.defaultXField]
+        let y = item[this.config.defaultYField]
+        xMin = xMin > x ? x : xMin
+        xMax = xMax > x ? xMax : x
+        yMin = yMin > y ? y : yMin
+        yMax = yMax > y ? yMax : y
+      })
+      this.xMin = xMin
+      this.xMax = xMax
+      this.yMin = yMin
+      this.yMax = yMax
+    },
+    // 如果是地图仅绘制区域内的点
+    pointsBounds(data) {
+      let map = this.config.defaultMapInstance
+      map.clearOverlays()
+      let mapData = []
+      let mapBounds = null
+      let r = map.getBounds()
+      if (r.equals(mapBounds)) return
+      this.mapBounds = r
+      let n = data.length
+
+      while (n--) {
+        let f = data[n]
+        if (!r.containsPoint(f)) {
+          continue
+        } // 超出可是范围的不画
+        let point = map.pointToOverlayPixel({
+          lng: data[n][this.config.defaultXField],
+          lat: data[n][this.config.defaultYField]
+          // radius: this.radius
+        })
+        // 需要渲染的点
+        mapData.push({
+          lng: point.x,
+          lat: point.y,
+          count: data[n].count
+        })
+      }
+      return mapData
+    },
+    handleData(conf) {
+      let datas = conf.data || []
+      let nums = (1 / this.gridSize) * (1 / this.gridSize)
+      let showData = this.pointsBounds(datas)
+      let len = showData.length
+      console.log('grids', this.grids.length, this.pointsBounds(datas), nums, datas.length)
+      if (len < 5000) {
+        //   // 没有超出划分的网格数就不需要聚合，单个渲染更合适
+        data = showData
+      } else {
+        data = this.pointsBounds(this.grids)
+      }
+      return { min: conf.min, max: conf.max, data: data }
+    },
+    // 每个点落到对应的网格中
+    _heatmapPoly(datas, gridSize = this.gridSize) {
+      let mapBox = this._contentPoly(gridSize)
+      let max = this._max
+      let len = datas.length
+      while (len--) {
+        let point = datas[len]
+        let x = point[this.config.defaultXField]
+        let y = point[this.config.defaultYField]
+        let count = point.count
+        // 找到该点所属的网格
+        let gridX = Math.floor((x - this.xMin) / gridSize)
+        let gridY = Math.floor((y - this.yMin) / gridSize)
+        // 将点的 count 值加到对应的网格中
+        if (count) mapBox[gridX][gridY].count += count
+        // 如果该网格的 count 值超过了最大值 max，则将该网格的 count 置为 max
+        if (mapBox[gridX][gridY].count > max) {
+          mapBox[gridX][gridY].count = max
+        }
+      }
+      return mapBox
+    },
+    _getPointXY(grid) {
+      let points = []
+      grid.forEach((row) => {
+        row.forEach((cell) => {
+          var x = (cell.x1 + cell.x2) / 2
+          var y = (cell.y1 + cell.y2) / 2
+          points.push({
+            [this.config.defaultXField]: x,
+            [this.config.defaultYField]: y,
+            count: cell.count
+          })
+        })
+      })
+
+      return points
+    }, // 根据点的x、y跨度画网格
+    _contentPoly(gridSize = this.gridSize) {
+      let mapBox = []
+      let width = this.xMax - this.xMin
+      let height = this.yMax - this.yMin
+      let xNum = Math.floor(width / gridSize) + 1
+      let yNum = Math.floor(height / gridSize) + 1
+      for (let i = 0; i < xNum; i++) {
+        let row = []
+        for (let j = 0; j < yNum; j++) {
+          row.push({
+            x1: this.xMin + i * gridSize,
+            y1: this.yMin + j * gridSize,
+            x2: this.xMin + (i + 1) * gridSize,
+            y2: this.yMin + (j + 1) * gridSize,
+            count: 0
+          })
+        }
+        mapBox.push(row)
+      }
+      return mapBox
+    },
+    // 如果是地图仅绘制区域内的点
+    pointsBounds(data) {
+      let map = this.config.defaultMapInstance
+      map.clearOverlays()
+      let mapData = []
+      let mapBounds = null
+      let r = map.getBounds()
+      if (r.equals(mapBounds)) return
+      this.mapBounds = r
+      let n = data.length
+
+      while (n--) {
+        let f = data[n]
+        if (!r.containsPoint(f)) {
+          continue
+        } // 超出可是范围的不画
+        let point = map.pointToOverlayPixel({
+          lng: data[n][this.config.defaultXField],
+          lat: data[n][this.config.defaultYField]
+          // radius: this.radius
+        })
+        // 需要渲染的点
+        mapData.push({
+          lng: point.x,
+          lat: point.y,
+          count: data[n].count
+        })
+      }
+      return mapData
     }
   }
   return HeatMapCanvas
@@ -134,39 +305,12 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
       this.ctx.clearRect(0, 0, this._width, this._height)
       this.shadowCtx.clearRect(0, 0, this._width, this._height)
     },
-    // 数据处理
-    handleData(data) {
-      let renderData = []
-      let min = data.min
-      let max = data.max
-      let dataCopy = data.data
 
-      return {
-        min: min,
-        max: max,
-        data: renderData
-      }
-    },
     // 画点
     _drawAlpha(conf) {
       let min = (this._min = conf.min)
       let max = (this._max = conf.max)
-      let datas = conf.data || []
-      let width = this._width
-      let height = this._height
-      let gridSize = 10
-      let xNum = Math.floor(width / gridSize)
-      let yNum = Math.floor(height / gridSize)
-      let gridsLen = xNum * yNum
-      if (gridsLen > datas.length) {
-        // 没有超出划分的网格数就不需要聚合，单个渲染更合适
-        data = datas
-      } else {
-        // 缩放可以再变化网格大小
-        let mapbox = this._heatmapPoly(datas, gridSize)
-        let grids = this._getPointXY(mapbox) // 转换获取对应每个网格的中心位置
-        data = grids
-      }
+      let data = conf.data
       let dataLen = data.length
       let radius = this.config.defaultRadius
       let blur = 1 - this.config.defaultBlur // blur越小越模糊
@@ -188,75 +332,7 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
         this.shadowCtx.drawImage(tpl, rectX, rectY)
       }
     },
-    // 容器网格
-    _contentPoly(gridSize = 10) {
-      let mapBox = []
-      let width = this._width
-      let height = this._height
-      let xNum = Math.floor(width / gridSize) + 1
-      let yNum = Math.floor(height / gridSize) + 1
-      for (let i = 0; i < xNum; i++) {
-        let row = []
-        for (let j = 0; j < yNum; j++) {
-          row.push({
-            x1: j * gridSize,
-            y1: i * gridSize,
-            x2: (j + 1) * gridSize,
-            y2: (i + 1) * gridSize,
-            count: 0
-          })
-        }
-        mapBox.push(row)
-      }
-      return mapBox
-    },
-    // 每个点落到对应的网格中
-    _heatmapPoly(datas, gridSize = 10) {
-      let mapBox = this._contentPoly(gridSize)
-      let max = this._max
-      let len = datas.length
-      while (len--) {
-        let point = datas[len]
-        let x = point[this.config.defaultXField]
-        let y = point[this.config.defaultYField]
-        let count = point.count
-        // 找到该点所属的网格
-        let gridX = Math.floor(x / gridSize)
-        let gridY = Math.floor(y / gridSize)
-        // 将点的 count 值加到对应的网格中
-        if (count) mapBox[gridX][gridY].count += count
-        // 如果该网格的 count 值超过了最大值 max，则将该网格的 count 置为 max
-        if (mapBox[gridX][gridY].count > max) {
-          mapBox[gridX][gridY].count = max
-        }
-      }
-      return mapBox
-    },
-    _getPointXY(grid) {
-      let points = []
-      grid.forEach((row) => {
-        row.forEach((cell) => {
-          var x = (cell.x1 + cell.x2) / 2
-          var y = (cell.y1 + cell.y2) / 2
-          points.push({
-            [this.config.defaultXField]: x,
-            [this.config.defaultYField]: y,
-            count: cell.count
-          })
-        })
-      })
 
-      return points
-    },
-    // 判断点是否在网格中
-    _findGridInfo(point, interval = 5) {
-      let width = this._width
-      let height = this._height
-      let xNum = Math.floor(width / interval) + 1
-      let yNum = Math.floor(height / interval) + 1
-
-      console.log(point)
-    },
     // 生成一个256px的彩带 获取像素点集合
     _getColorPalette() {
       let gradientConfig = this.config.defaultGradient
@@ -322,7 +398,19 @@ let canvasRender = (function Canvas2dRendererClosure(config) {
         this._drawAlpha(data) // 重新画灰度点
         this._colorResize() // 重新配置颜色
       }
-    }
+    },
+    // 局部渲染
+    renderUpdate(data) {
+      console.log('renderUpdate', data)
+      // this  本身
+      this._clear()
+      if (data.data.length > 0) {
+        this._drawAlpha(data) // 重新画灰度点
+        this._colorResize() // 重新配置颜色
+      }
+    },
+    // 局部
+    renderPartial(data) {}
   }
   return canvasRender
 })()
